@@ -69,6 +69,8 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || die "--jobs attend un entier positif (reçu : '$JOBS')."
+
 VENV_DIR="$REPO_DIR/.venv"
 VARIABLES_DIR="$(dirname "$REPO_DIR")/fs-build-variables"
 BUILD_DIR="$REPO_DIR/build-linux-x86_64"
