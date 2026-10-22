@@ -22,27 +22,41 @@ Seules les builds 64 bits sont possibles. Avec peu de RAM, réduisez le nombre d
 
 ## Installation rapide
 
-```bash
-cd phoenix-firestorm
-./install_firestorm.sh                          # compile ReleaseFS_open avec 3 jobs
-./install_firestorm.sh --install ~/firestorm    # compile puis installe dans ~/firestorm
+Le script se lance depuis ce dépôt. Il place les sources du viewer à côté de lui :
+
 ```
+SECONDLIFE/
+├── firestorm/            ce dépôt (script + guide)
+├── phoenix-firestorm/    sources du viewer, clonées par le script si absentes
+└── fs-build-variables/   variables de build, clonées par le script
+```
+
+```bash
+cd firestorm
+./install_firestorm.sh                                  # clone, compile ReleaseFS_open avec 2 jobs
+./install_firestorm.sh --jobs 2 --install ~/firestorm   # compile puis installe dans ~/firestorm
+```
+
+Le script peut aussi être copié à la racine d'un clone de `phoenix-firestorm`. Il utilise alors ce clone directement.
 
 Le script :
 1. installe les paquets apt manquants (demande le mot de passe `sudo`) ;
-2. vérifie la RAM, le swap, l'espace disque et la version de GCC ;
-3. crée un environnement Python `.venv` dans le dépôt et y installe `autobuild` (`requirements.txt`) ;
-4. clone (ou met à jour) `fs-build-variables` à côté du dépôt ;
-5. configure le build (Ninja, tests désactivés) ;
-6. compile ;
-7. avec `--install`, copie le viewer et crée le lanceur dans le menu des applications.
+2. clone `phoenix-firestorm` s'il n'existe pas encore. Un clone existant est utilisé tel quel, sur sa branche actuelle ;
+3. vérifie la RAM, le swap, l'espace disque et la version de GCC ;
+4. crée un environnement Python `.venv` dans les sources et y installe `autobuild` (`requirements.txt`) ;
+5. clone (ou met à jour) `fs-build-variables` à côté des sources ;
+6. configure le build (Ninja, ccache, tests désactivés) ;
+7. compile ;
+8. avec `--install`, copie le viewer et crée le lanceur dans le menu des applications.
 
 ### Options
 
 | Option | Effet |
 |---|---|
+| `--src <dossier>` | Emplacement des sources `phoenix-firestorm` (défaut `../phoenix-firestorm`) |
+| `--branch <nom>` | Branche à cloner (défaut `master` ; ignoré si les sources existent déjà) |
 | `--config <nom>` | Configuration autobuild (défaut `ReleaseFS_open`, voir ci-dessous) |
-| `--jobs <n>` | Compilations en parallèle (défaut 3, environ 2 Go de RAM par job) |
+| `--jobs <n>` | Compilations en parallèle (défaut 2, environ 2 Go de RAM par job) |
 | `--chan <nom>` | Nom du canal ; le viewer s'appellera `Firestorm-<nom>` |
 | `--install <dossier>` | Copie le viewer compilé et crée le lanceur de menu |
 | `--skip-deps` | Ne touche pas aux paquets système |
@@ -78,7 +92,7 @@ git clone https://github.com/FirestormViewer/fs-build-variables.git ../fs-build-
 export AUTOBUILD_VARIABLES_FILE=$(realpath ../fs-build-variables/variables)
 
 # Configuration puis compilation
-ARGS="--ninja --jobs 3 --compiler-cache -DLL_TESTS:BOOL=FALSE -DGCC_DISABLE_FATAL_WARNINGS:BOOL=TRUE"
+ARGS="--ninja --jobs 2 --compiler-cache -DLL_TESTS:BOOL=FALSE -DGCC_DISABLE_FATAL_WARNINGS:BOOL=TRUE"
 autobuild configure -A 64 -c ReleaseFS_open -- $ARGS
 autobuild build -A 64 -c ReleaseFS_open --no-configure -- $ARGS
 ```
@@ -89,14 +103,14 @@ La première configuration télécharge les paquets tiers et prend plusieurs min
 
 ## Résultat
 
-- Viewer prêt à lancer : `build-linux-x86_64/newview/packaged/firestorm`
-- Archive distribuable : `build-linux-x86_64/newview/Phoenix*.tar.*`
-- Journal de compilation : `build-linux-x86_64/logs/build_linux.log`
+- Viewer prêt à lancer : `phoenix-firestorm/build-linux-x86_64/newview/packaged/firestorm`
+- Archive distribuable : `phoenix-firestorm/build-linux-x86_64/newview/Phoenix*.tar.*`
+- Journal de compilation : `phoenix-firestorm/build-linux-x86_64/logs/build_linux.log`
 
 Pour installer le viewer ailleurs (ou sur une autre machine) :
 
 ```bash
-rsync -rptgoDLK --update build-linux-x86_64/newview/packaged/ ~/firestorm/
+rsync -rptgoDLK --update phoenix-firestorm/build-linux-x86_64/newview/packaged/ ~/firestorm/
 cd ~/firestorm && etc/refresh_desktop_app_entry.sh   # lanceur dans le menu Internet/Réseau
 ./firestorm
 ```
@@ -108,8 +122,8 @@ cd ~/firestorm && etc/refresh_desktop_app_entry.sh   # lanceur dans le menu Inte
 - **Manque de mémoire** : relancer avec un `--jobs` plus petit et `--skip-configure` ; ajouter du swap.
 - **Erreurs SDL2 lors d'une reconfiguration** : supprimer les fichiers SDL2 déjà extraits, puis reconfigurer :
   ```bash
-  rm -rf build-linux-x86_64/packages/include/SDL2/ build-linux-x86_64/packages/docs/SDL/
-  rm -f build-linux-x86_64/packages/LICENSES/SDL.txt build-linux-x86_64/packages/lib/release/*SDL*
+  rm -rf phoenix-firestorm/build-linux-x86_64/packages/include/SDL2/ phoenix-firestorm/build-linux-x86_64/packages/docs/SDL/
+  rm -f phoenix-firestorm/build-linux-x86_64/packages/LICENSES/SDL.txt phoenix-firestorm/build-linux-x86_64/packages/lib/release/*SDL*
   ```
 - **`autobuild.xml` modifié** (après `autobuild installables edit`) : le restaurer avant de récupérer de nouveaux commits (`git checkout autobuild.xml`).
 - **Son retardé ou absent** : voir `README.Linux.txt` dans le dossier du viewer, ou compiler avec FMOD Studio.
