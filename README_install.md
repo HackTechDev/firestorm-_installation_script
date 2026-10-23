@@ -43,7 +43,7 @@ Le script :
 1. installe les paquets apt manquants (demande le mot de passe `sudo`) ;
 2. clone `phoenix-firestorm` s'il n'existe pas encore. Un clone existant est utilisé tel quel, sur sa branche actuelle ;
 3. vérifie la RAM, le swap, l'espace disque et la version de GCC ;
-4. crée un environnement Python `.venv` dans les sources et y installe `autobuild` (`requirements.txt`) ;
+4. crée un environnement Python `.venv` dans les sources, y installe `autobuild` (`requirements.txt`) et l'utilise pour tout le build (CMake et `viewer_manifest.py`) ;
 5. clone (ou met à jour) `fs-build-variables` à côté des sources ;
 6. configure le build (Ninja, ccache, tests désactivés) ;
 7. compile ;
@@ -99,6 +99,8 @@ autobuild build -A 64 -c ReleaseFS_open --no-configure -- $ARGS
 
 `-DGCC_DISABLE_FATAL_WARNINGS:BOOL=TRUE` n'est utile qu'avec un GCC plus récent que la version 11 (voir « Problèmes courants »). `--compiler-cache` utilise `ccache` pour accélérer les recompilations.
 
+Le venv doit rester activé (`source .venv/bin/activate`) pour la configuration **et** la compilation : CMake mémorise le `python3` trouvé dans le `PATH` lors de la configuration, et seul celui du venv contient le module `llsd` nécessaire à l'empaquetage.
+
 La première configuration télécharge les paquets tiers et prend plusieurs minutes. La compilation prend une à plusieurs heures selon la machine.
 
 ## Résultat
@@ -119,6 +121,8 @@ cd ~/firestorm && etc/refresh_desktop_app_entry.sh   # lanceur dans le menu Inte
 
 - **`error: array subscript ... is partly outside array bounds [-Werror=array-bounds=]`** : ce faux positif a été rencontré avec GCC 15 sur Lubuntu 26.04, dans `llpaneloutfitedit.cpp`. Le projet compile avec `-Werror`, si bien que les nouveaux avertissements des GCC récents bloquent le build. La solution est de reconfigurer avec `-DGCC_DISABLE_FATAL_WARNINGS:BOOL=TRUE`. Le script le fait automatiquement dès que GCC est plus récent que la version 11.
 
+- **`ModuleNotFoundError: No module named 'llsd'`** (étape « Performing viewer_manifest copy ») : la compilation a réussi, mais le build a été configuré avec le Python système au lieu de celui du venv. Le script corrige cela automatiquement à la configuration ; il suffit de le relancer sans `--skip-configure`. En procédure manuelle, activer le venv puis reconfigurer avec `-DPYTHON_EXECUTABLE:FILEPATH=$PWD/.venv/bin/python3`.
+- **`AUTOBUILD_EXECUTABLE-NOTFOUND`** (étape « Generating packages-info.txt ») : `cmake` a été relancé directement sur `build-linux-x86_64` sans passer par autobuild. Toujours reconfigurer avec `autobuild configure` (ou le script), ou à défaut ajouter `-DAUTOBUILD_EXECUTABLE:FILEPATH=$PWD/.venv/bin/autobuild`.
 - **Manque de mémoire** : relancer avec un `--jobs` plus petit et `--skip-configure` ; ajouter du swap.
 - **Erreurs SDL2 lors d'une reconfiguration** : supprimer les fichiers SDL2 déjà extraits, puis reconfigurer :
   ```bash

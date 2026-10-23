@@ -123,6 +123,9 @@ log "Installation d'autobuild dans $VENV_DIR"
 "$VENV_DIR/bin/pip" install -q -r "$REPO_DIR/requirements.txt"
 AUTOBUILD="$VENV_DIR/bin/autobuild"
 "$AUTOBUILD" --version
+# viewer_manifest.py a besoin du module llsd installé dans le venv : CMake doit choisir ce Python
+export PATH="$VENV_DIR/bin:$PATH"
+export PYTHON="$VENV_DIR/bin/python3"
 # Ne pas faire apparaître le venv dans git status
 grep -qx '.venv/' "$REPO_DIR/.git/info/exclude" 2>/dev/null || echo '.venv/' >> "$REPO_DIR/.git/info/exclude"
 
@@ -145,7 +148,8 @@ command -v ccache >/dev/null && extra_args+=(--compiler-cache)
 
 if [ "$SKIP_CONFIGURE" -eq 0 ]; then
     log "Configuration ($CONFIG) - premier lancement long : téléchargement des paquets tiers"
-    cfg_args=("${extra_args[@]}")
+    # Forcer aussi le Python du venv dans un cache CMake existant (sinon l'ancienne valeur est conservée)
+    cfg_args=("${extra_args[@]}" "-DPYTHON_EXECUTABLE:FILEPATH=$PYTHON")
     [ "$CLEAN" -eq 1 ] && cfg_args+=(--clean)
     "$AUTOBUILD" configure -A 64 -c "$CONFIG" -- "${cfg_args[@]}"
 fi
